@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="pt-pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mikhail tAI - Knight Protocol</title>
+    <style>
+        :root {
+            --bg-color: #0d0d12;
+            --grid-1: #16161d;
+            --grid-2: #1c1c26;
+            --neon-blue: #00f2ff;
+            --neon-pink: #ff0055;
+            --neon-green: #00ff88;
+            --neon-gold: #ffd700;
+            --text-main: #ffffff;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            user-select: none;
+            touch-action: manipulation;
+        }
+
+        .header {
+            width: 95%;
+            max-width: 480px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .title {
+            font-size: 1.4rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .record {
+            font-size: 0.8rem;
+            color: #888;
+        }
+
+        #game-container {
+            position: relative;
+            border: 2px solid #333;
+            width: 95vw;
+            height: 95vw;
+            max-width: 480px;
+            max-height: 480px;
+        }
+
+        canvas {
+            display: block;
+            cursor: crosshair;
+            width: 100%;
+            height: 100%;
+            background-color: var(--grid-1);
+        }
+
+        /* Sistema de Menu */
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(13, 13, 18, 0.98);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            z-index: 20;
+            text-align: center;
+            padding: 15px;
+            box-sizing: border-box;
+        }
+
+        #ui-overlay.visible {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        .signature {
+            font-size: 0.6rem;
+            color: #555;
+            margin-top: -15px;
+            margin-bottom: 20px;
+            letter-spacing: 1px;
+            font-family: monospace;
+            text-transform: lowercase;
+        }
+
+        .btn {
+            background: transparent;
+            border: 1px solid var(--neon-blue);
+            color: var(--neon-blue);
+            padding: 12px 20px;
+            font-family: inherit;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: 0.2s;
+            width: 180px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.9rem;
+        }
+
+        .btn:hover {
+            background: var(--neon-blue);
+            color: #000;
+            box-shadow: 0 0 15px var(--neon-blue);
+        }
+
+        .btn-secondary {
+            border-color: #666;
+            color: #aaa;
+            font-size: 0.75rem;
+        }
+
+        input[type="text"] {
+            background: #222;
+            border: 1px solid var(--neon-blue);
+            color: white;
+            padding: 10px;
+            margin: 10px 0;
+            text-align: center;
+            font-family: inherit;
+            outline: none;
+            width: 160px;
+        }
+
+        .content-box {
+            text-align: left;
+            font-size: 0.8rem;
+            line-height: 1.4;
+            color: #ccc;
+            max-height: 50vh;
+            overflow-y: auto;
+            padding-right: 8px;
+            margin-bottom: 15px;
+            width: 90%;
+        }
+
+        .content-box h3 {
+            font-size: 1rem;
+            color: var(--neon-blue);
+            margin-top: 0;
+            border-bottom: 1px solid #333;
+            padding-bottom: 8px;
+            text-align: center;
+        }
+
+        .leaderboard-list {
+            list-style: none;
+            padding: 0;
+            width: 100%;
+        }
+
+        .leaderboard-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 5px;
+            border-bottom: 1px solid #222;
+            font-size: 0.85rem;
+        }
+
+        .leaderboard-item span:last-child {
+            color: var(--neon-green);
+        }
+
+        .stats-bar {
+            width: 95%;
+            max-width: 480px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 0.8rem;
+        }
+
+        #tension-val { color: var(--neon-pink); font-weight: bold; }
+        #audacity-val { color: var(--neon-blue); font-weight: bold; }
+        .timer-label { font-size: 0.7rem; color: #888; text-transform: uppercase; }
+
+        a {
+            color: var(--neon-blue);
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="title">MIKHAIL tA<span style="color:var(--neon-blue)">I</span></div>
+        <div class="record">REC: <span id="best-val">0</span></div>
+    </div>
+
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div id="ui-overlay" class="visible">
+            
+            <div id="screen-main" class="screen active">
+                <h2 id="msg-top" style="color: var(--neon-blue); margin-bottom: 20px; text-transform: uppercase; font-size: 1.5rem;">Mikhail tAI</h2>
+                <div class="signature">feito com &lt;3 por mateus morais</div>
+                <div id="msg-score" style="margin-bottom: 15px; font-size: 0.9rem;"></div>
+                <button class="btn" onclick="startGame()">INICIAR</button>
+                <button class="btn btn-secondary" onclick="showScreen('tutorial')">TUTORIAL</button>
+                <button class="btn btn-secondary" onclick="updateLeaderboardUI(); showScreen('leaderboard')">RECORDISTAS</button>
+                <button class="btn btn-secondary" onclick="showScreen('credits')">CRÉDITOS</button>
+            </div>
+
+            <div id="screen-input-name" class="screen">
+                <h3 style="color: var(--neon-gold);">NOVO RECORDE!</h3>
+                <p id="new-record-time" style="font-size: 0.9rem;"></p>
+                <input type="text" id="player-name-input" maxlength="12" placeholder="TEU NOME">
+                <button class="btn" onclick="submitScore()">SALVAR</button>
+            </div>
+
+            <div id="screen-tutorial" class="screen">
+                <div class="content-box">
+                    <h3>TUTORIAL</h3>
+                    <p><b>1. MOVER:</b> Toca para saltar em 'L' (Cavalo).</p>
+                    <p><b>2. INIMIGOS:</b> Peças brancas eliminam-te ao tocar.</p>
+                    <p><b>3. VIDA (❤):</b> Apanha o coração antes do tempo terminar.</p>
+                    <p><b>4. MODO FLOW (♚):</b> A cada 35s, o Rei Dourado surge. Ele aparece <b>SEMPRE</b> a <b>EXATAMENTE 2 LANCES</b> de distância.</p>
+                    <p><b>5. PONTOS:</b> Ganha "Audácia" jogando com risco.</p>
+                </div>
+                <button class="btn" onclick="showScreen('main')">VOLTAR</button>
+            </div>
+
+            <div id="screen-leaderboard" class="screen">
+                <div class="content-box">
+                    <h3>RECORDISTAS (TOP 5)</h3>
+                    <div id="leaderboard-container"></div>
+                </div>
+                <button class="btn" onclick="showScreen('main')">VOLTAR</button>
+            </div>
+
+            <div id="screen-credits" class="screen">
+                <div class="content-box" style="text-align: center;">
+                    <h3 style="margin-top: 20px;">CRÉDITOS</h3>
+                    <p style="font-size: 1.1rem; color: #fff; margin-bottom: 5px;">Mateus Morais</p>
+                    <p style="font-size: 0.8rem;">GitHub:</p>
+                    <p style="font-size: 0.8rem;"><a href="https://github.com/mateusmoraiss" target="_blank">mateusmoraiss</a></p>
+                    <p style="margin-top: 20px; font-size: 0.6rem; color: #555;">v3.5.0</p>
+                </div>
+                <button class="btn" onclick="showScreen('main')">VOLTAR</button>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="stats-bar">
+        <div class="timer-display">
+            <span class="timer-label">Manutenção:</span>
+            <span id="heart-timer-val" style="color: var(--neon-green)">--</span>
+        </div>
+        <div class="tension-meter">
+            AUD: <span id="audacity-val">0</span> | TEN: <span id="tension-val">0%</span>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        const audacityEl = document.getElementById('audacity-val');
+        const tensionEl = document.getElementById('tension-val');
+        const bestEl = document.getElementById('best-val');
+        const heartTimerEl = document.getElementById('heart-timer-val');
+        const overlay = document.getElementById('ui-overlay');
+        const msgTop = document.getElementById('msg-top');
+        const msgScore = document.getElementById('msg-score');
+        const nameInput = document.getElementById('player-name-input');
+        const recordTimeMsg = document.getElementById('new-record-time');
+
+        const GRID_SIZE = 8;
+        const TILE_SIZE = 60;
+        canvas.width = GRID_SIZE * TILE_SIZE;
+        canvas.height = GRID_SIZE * TILE_SIZE;
+
+        const COLORS = {
+            PLAYER: "#ffffff",
+            ENEMY: "#ffffff",
+            DANGER: "#ff0055",
+            HEAL: "#00ff88",
+            TARGET: "#ffd700",
+            GRID1: "#16161d",
+            GRID2: "#1c1c26"
+        };
+
+        let gameActive = false;
+        let score = 0;
+        let audacity = 0;
+        let tension = 0;
+        let spawnTimer = 0;
+        let itemSpawnTimer = 0;
+        
+        let bestScore = localStorage.getItem('mikhail_best_v2') || 0;
+        bestEl.innerText = bestScore;
+
+        let player = { x: 4, y: 4 };
+        let enemies = [];
+        let particles = [];
+        let currentHeart = null; 
+        let lastExit = Array(GRID_SIZE).fill(0).map(() => Array(GRID_SIZE).fill(0));
+
+        const FLOW_COOLDOWN_FRAMES = 2100;
+
+        let flowMode = {
+            state: 'IDLE', 
+            cooldown: FLOW_COOLDOWN_FRAMES, 
+            timer: 0,
+            maxTime: 0,
+            target: null,
+            warningTimer: 0 
+        };
+
+        function getLeaderboard() {
+            const data = localStorage.getItem('mikhail_leaderboard');
+            return data ? JSON.parse(data) : [];
+        }
+
+        function saveScore(name, time) {
+            let lb = getLeaderboard();
+            lb.push({ name: name || "Anónimo", time: time });
+            lb.sort((a, b) => b.time - a.time);
+            lb = lb.slice(0, 5);
+            localStorage.setItem('mikhail_leaderboard', JSON.stringify(lb));
+        }
+
+        function checkLeaderboardEligibility(time) {
+            const lb = getLeaderboard();
+            if (lb.length < 5) return true;
+            return time > lb[lb.length - 1].time;
+        }
+
+        function updateLeaderboardUI() {
+            const container = document.getElementById('leaderboard-container');
+            const lb = getLeaderboard();
+            if (lb.length === 0) {
+                container.innerHTML = "<p style='text-align:center;'>Nenhum registo ainda.</p>";
+                return;
+            }
+            let html = "<ul class='leaderboard-list'>";
+            lb.forEach((entry, i) => {
+                html += `
+                    <li class="leaderboard-item">
+                        <span>${i + 1}. ${entry.name}</span>
+                        <span>${entry.time}s</span>
+                    </li>`;
+            });
+            html += "</ul>";
+            container.innerHTML = html;
+        }
+
+        function submitScore() {
+            const name = nameInput.value.trim().toUpperCase();
+            const timeSurvived = Math.floor(score / 60);
+            saveScore(name, timeSurvived);
+            showScreen('main');
+            updateLeaderboardUI();
+        }
+
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            const target = document.getElementById('screen-' + screenId);
+            if (target) target.classList.add('active');
+        }
+
+        function startGame() {
+            player = { x: 3, y: 4 };
+            enemies = [];
+            particles = [];
+            currentHeart = null;
+            audacity = 0;
+            tension = 0;
+            score = 0;
+            spawnTimer = 0;
+            itemSpawnTimer = 40; 
+            lastExit = Array(GRID_SIZE).fill(0).map(() => Array(GRID_SIZE).fill(0));
+            flowMode = { state: 'IDLE', cooldown: FLOW_COOLDOWN_FRAMES, timer: 0, maxTime: 0, target: null, warningTimer: 0 };
+            overlay.classList.remove('visible');
+            gameActive = true;
+            requestAnimationFrame(gameLoop);
+        }
+
+        function gameOver(reason = "FIM DE JOGO") {
+            gameActive = false;
+            overlay.classList.add('visible');
+            const timeSurvived = Math.floor(score / 60);
+            if (audacity > bestScore) {
+                bestScore = audacity;
+                localStorage.setItem('mikhail_best_v2', audacity);
+                bestEl.innerText = audacity;
+            }
+            if (checkLeaderboardEligibility(timeSurvived) && timeSurvived > 0) {
+                recordTimeMsg.innerText = `Sobreviveste por ${timeSurvived} segundos!`;
+                nameInput.value = "";
+                showScreen('input-name');
+            } else {
+                showScreen('main'); 
+                msgTop.innerText = reason;
+                msgTop.style.color = COLORS.DANGER;
+                msgScore.innerHTML = `AUDÁCIA: ${audacity} | TEMPO: ${timeSurvived}s`;
+            }
+        }
+
+        function getKnightMoves(x, y) {
+            const moves = [[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]];
+            let valid = [];
+            moves.forEach(m => {
+                let nx = x + m[0], ny = y + m[1];
+                if(nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE) valid.push({x: nx, y: ny});
+            });
+            return valid;
+        }
+
+        function triggerFlowMode() {
+            flowMode.state = 'ACTIVE';
+            let step1 = getKnightMoves(player.x, player.y);
+            let candidates = [];
+            step1.forEach(p1 => {
+                let step2 = getKnightMoves(p1.x, p1.y);
+                step2.forEach(p2 => {
+                    if(p2.x === player.x && p2.y === player.y) return;
+                    if(step1.some(s1 => s1.x === p2.x && s1.y === p2.y)) return;
+                    candidates.push(p2);
+                });
+            });
+            if(candidates.length === 0) candidates.push({x: 0, y: 0});
+            flowMode.target = candidates[Math.floor(Math.random() * candidates.length)];
+            flowMode.maxTime = Math.max(120, 300 - (tension * 2)); 
+            flowMode.timer = flowMode.maxTime;
+        }
+
+        // Lógica de Input com magnetismo/tolerância
+        const handleInput = (clientX, clientY) => {
+            if(!gameActive || flowMode.state === 'WARNING') return;
+            const rect = canvas.getBoundingClientRect();
+            
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            
+            const canvasX = (clientX - rect.left) * scaleX;
+            const canvasY = (clientY - rect.top) * scaleY;
+            
+            // Lógica de Tolerância: Procura o movimento válido mais próximo do clique
+            const moves = [[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]];
+            let bestMove = null;
+            let minDistance = Infinity;
+            
+            // Tolerância de aproximadamente 90% do tamanho de uma casa para a "atração"
+            const toleranceThreshold = TILE_SIZE * 0.9; 
+
+            moves.forEach(m => {
+                const nx = player.x + m[0];
+                const ny = player.y + m[1];
+
+                if (nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE) {
+                    const centerX = nx * TILE_SIZE + TILE_SIZE / 2;
+                    const centerY = ny * TILE_SIZE + TILE_SIZE / 2;
+                    const dist = Math.sqrt((canvasX - centerX)**2 + (canvasY - centerY)**2);
+
+                    if (dist < minDistance && dist < toleranceThreshold) {
+                        minDistance = dist;
+                        bestMove = { x: nx, y: ny };
+                    }
+                }
+            });
+
+            if (bestMove) {
+                player.x = bestMove.x;
+                player.y = bestMove.y;
+                checkCollisions(player.x, player.y);
+            }
+        };
+
+        canvas.addEventListener('mousedown', (e) => handleInput(e.clientX, e.clientY));
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            handleInput(touch.clientX, touch.clientY);
+        }, { passive: false });
+
+        function checkCollisions(x, y) {
+            if(flowMode.state === 'IDLE') {
+                enemies.forEach(e => {
+                    if(e.active && Math.floor(e.x) === x && Math.floor(e.y) === y) gameOver("COLISÃO");
+                });
+            }
+            if(flowMode.state === 'ACTIVE' && flowMode.target) {
+                if(x === flowMode.target.x && y === flowMode.target.y) {
+                    audacity += 150;
+                    flowMode.state = 'IDLE';
+                    flowMode.cooldown = FLOW_COOLDOWN_FRAMES; 
+                    createParticles(x, y, COLORS.TARGET, 20);
+                    return;
+                }
+            }
+            if(currentHeart && x === currentHeart.x && y === currentHeart.y) {
+                audacity += 50;
+                createParticles(x, y, COLORS.HEAL, 15);
+                currentHeart = null;
+                itemSpawnTimer = 250 + Math.random() * 150; 
+            }
+        }
+
+        function spawnEnemy() {
+            const types = ['ROOK', 'BISHOP'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            const count = 1 + Math.floor(tension / 45);
+            for(let i=0; i < count; i++) {
+                let x, y, vx=0, vy=0;
+                const side = Math.floor(Math.random() * 4);
+                if(type === 'ROOK') {
+                    if(side % 2 === 0) { x = Math.floor(Math.random()*GRID_SIZE); y = side===0?0:GRID_SIZE-1; vy = side===0?1:-1; }
+                    else { y = Math.floor(Math.random()*GRID_SIZE); x = side===1?GRID_SIZE-1:0; vx = side===1?-1:1; }
+                } else {
+                    x = Math.random()>0.5?0:GRID_SIZE-1; y = Math.floor(Math.random()*GRID_SIZE);
+                    vx = x===0?1:-1; vy = Math.random()>0.5?1:-1;
+                }
+                enemies.push({ type, x, y, vx, vy, timer: 0, warning: true, warningLife: 80, active: false });
+            }
+        }
+
+        function createParticles(x, y, color, n) {
+            for(let i=0; i<n; i++) {
+                particles.push({ x: x*TILE_SIZE + TILE_SIZE/2, y: y*TILE_SIZE + TILE_SIZE/2, vx: (Math.random()-0.5)*4, vy: (Math.random()-0.5)*4, life: 1.0, c: color });
+            }
+        }
+
+        function update() {
+            score++;
+            tension = Math.min(100, tension + 0.005);
+            if(currentHeart) {
+                currentHeart.timer--;
+                heartTimerEl.innerText = (currentHeart.timer / 60).toFixed(1) + "s";
+                if(currentHeart.timer <= 0) gameOver("CORAÇÃO EXPIROU");
+            } else {
+                heartTimerEl.innerText = "--";
+                if(flowMode.state === 'IDLE') {
+                    itemSpawnTimer--;
+                    if(itemSpawnTimer <= 0) {
+                        currentHeart = {
+                            x: Math.floor(Math.random() * GRID_SIZE),
+                            y: Math.floor(Math.random() * GRID_SIZE),
+                            maxTime: Math.max(180, 500 - (tension * 3)),
+                            timer: 0
+                        };
+                        currentHeart.timer = currentHeart.maxTime;
+                    }
+                }
+            }
+            if(flowMode.state === 'ACTIVE') {
+                flowMode.timer--;
+                if(flowMode.timer <= 0) gameOver("REI NÃO CAPTURADO");
+                enemies = [];
+            } else if (flowMode.state === 'WARNING') {
+                flowMode.warningTimer--;
+                enemies = []; currentHeart = null; 
+                if(flowMode.warningTimer <= 0) triggerFlowMode();
+            } else {
+                flowMode.cooldown--;
+                if(flowMode.cooldown <= 0) { flowMode.state = 'WARNING'; flowMode.warningTimer = 100; }
+                spawnTimer -= (1 + (tension / 180));
+                if(spawnTimer <= 0) { spawnEnemy(); spawnTimer = 180; }
+                for(let i=enemies.length-1; i>=0; i--) {
+                    let e = enemies[i];
+                    if(e.warning) { if(++e.timer >= e.warningLife) { e.warning = false; e.active = true; e.timer = 0; if(Math.floor(e.x) === player.x && Math.floor(e.y) === player.y) gameOver("COLISÃO"); } }
+                    else {
+                        if(++e.timer % 55 === 0) {
+                            if(e.x>=0 && e.x<GRID_SIZE && e.y>=0 && e.y<GRID_SIZE) lastExit[Math.floor(e.x)][Math.floor(e.y)] = Date.now();
+                            e.x += e.vx; e.y += e.vy;
+                            if(Math.floor(e.x) === player.x && Math.floor(e.y) === player.y) gameOver("COLISÃO");
+                            if(e.x < -1 || e.x > GRID_SIZE || e.y < -1 || e.y > GRID_SIZE) enemies.splice(i, 1);
+                        }
+                    }
+                }
+            }
+            particles = particles.filter(p => (p.life -= 0.02) > 0);
+            particles.forEach(p => { p.x += p.vx; p.y += p.vy; });
+            audacityEl.innerText = audacity;
+            tensionEl.innerText = Math.floor(tension) + "%";
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for(let i=0; i<GRID_SIZE; i++) {
+                for(let j=0; j<GRID_SIZE; j++) {
+                    ctx.fillStyle = (i+j)%2 === 0 ? COLORS.GRID1 : COLORS.GRID2;
+                    ctx.fillRect(i*TILE_SIZE, j*TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                    const dx = Math.abs(i - player.x), dy = Math.abs(j - player.y);
+                    if(gameActive && flowMode.state !== 'WARNING' && ((dx === 2 && dy === 1) || (dx === 1 && dy === 2))) {
+                        ctx.strokeStyle = flowMode.state === 'ACTIVE' ? COLORS.TARGET : "rgba(0, 242, 255, 0.15)";
+                        ctx.lineWidth = 1; ctx.strokeRect(i*TILE_SIZE+8, j*TILE_SIZE+8, TILE_SIZE-16, TILE_SIZE-16);
+                    }
+                }
+            }
+            if(flowMode.state === 'WARNING') {
+                ctx.fillStyle = COLORS.TARGET; ctx.font = "bold 14px monospace"; ctx.textAlign = "center";
+                ctx.fillText("SINCRONIZANDO...", canvas.width/2, canvas.height/2);
+            }
+            if(flowMode.state === 'ACTIVE' && flowMode.target) {
+                let tx = flowMode.target.x, ty = flowMode.target.y;
+                ctx.fillStyle = COLORS.TARGET; ctx.font = "40px serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                ctx.fillText("♚", tx*TILE_SIZE+30, ty*TILE_SIZE+30);
+                ctx.fillStyle = COLORS.TARGET; ctx.fillRect(0, 0, canvas.width * (flowMode.timer / flowMode.maxTime), 4);
+            }
+            if(flowMode.state === 'IDLE') {
+                enemies.forEach(e => {
+                    ctx.save(); if(e.warning) ctx.globalAlpha = 0.3;
+                    ctx.fillStyle = "white"; ctx.font = "38px serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                    ctx.fillText(e.type === 'ROOK' ? "♖" : "♗", e.x*TILE_SIZE+30, e.y*TILE_SIZE+30);
+                    ctx.restore();
+                });
+                if(currentHeart) {
+                    ctx.fillStyle = COLORS.HEAL; ctx.font = "32px serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                    ctx.fillText("❤", currentHeart.x*TILE_SIZE+30, currentHeart.y*TILE_SIZE+30);
+                    ctx.fillStyle = COLORS.HEAL; ctx.fillRect(currentHeart.x*TILE_SIZE + 10, currentHeart.y*TILE_SIZE + 50, (TILE_SIZE-20) * (currentHeart.timer/currentHeart.maxTime), 4);
+                }
+            }
+            particles.forEach(p => { ctx.globalAlpha = p.life; ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, Math.PI*2); ctx.fill(); });
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = flowMode.state === 'WARNING' ? "#555" : "white";
+            ctx.font = "45px serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            ctx.fillText("♞", player.x*TILE_SIZE+30, player.y*TILE_SIZE+30);
+        }
+
+        function gameLoop() { if(!gameActive) return; update(); draw(); requestAnimationFrame(gameLoop); }
+        updateLeaderboardUI();
+        showScreen('main');
+        overlay.classList.add('visible');
+    </script>
+</body>
+</html>
